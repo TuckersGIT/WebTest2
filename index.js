@@ -13,6 +13,7 @@ camera.position.z = 3;
 
 // Scene
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x404040);
 
 // Mesh
 const gltfLoader = new GLTFLoader();
@@ -21,21 +22,20 @@ gltfLoader.load('./assets/lowpolypatrick.glb', (gltf) => {
   mesh.traverse((child) => {
     if (child.isMesh) {
       child.geometry.center();
+
+      const hullGeo = child.geometry.clone();
+      hullGeo.scale(1.02, 1.02, 1.02);
+      const hullMath = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide });
+      const hullMesh = new THREE.Mesh(hullGeo, hullMath);
+      hullMesh.geometry.center();
+      
+      mesh.add(hullMesh);
     }
 });
   mesh.scale.set(2, 2, 2);
   scene.add(mesh);
 });
 
-// const geo = new THREE.IcosahedronGeometry(1, 2);
-// const mat = new THREE.MeshStandardMaterial({ color: 0xccff00, flatShading: true });
-// const mesh = new THREE.Mesh(geo, mat);
-// scene.add(mesh);
-
-// // Wireframe overlay
-// const wireMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
-// const wireMesh = new THREE.Mesh(geo, wireMat);
-// mesh.add(wireMesh);
 
 // Light
 const hemilight = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
