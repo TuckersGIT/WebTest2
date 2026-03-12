@@ -51,7 +51,10 @@ const models = [
   "./assets/bird.glb",
   "./assets/CowboyCat.glb",
   "./assets/Ganglios.glb",
-  "./assets/lowpolypatrick.glb"
+  "./assets/lowpolypatrick.glb",
+  "./assets/Rora.glb",
+  "./assets/Cow.glb",
+  "./assets/Clown.glb"
 ];
 
 
@@ -196,4 +199,5 @@ function animate() {
 }
 
 animate();
+
 
