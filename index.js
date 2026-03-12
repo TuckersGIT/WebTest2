@@ -1,6 +1,11 @@
 import * as THREE from "three";
-import {GLTFLoader} from "jsm/loaders/GLTFLoader.js";
+import { GLTFLoader } from "jsm/loaders/GLTFLoader.js";
+
+// Global variables
 let mesh;
+let mixer;
+const clock = new THREE.Clock();
+let isFinished = false;
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -8,38 +13,97 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Camera
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10);
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  10
+);
 camera.position.z = 3;
 
 // Scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x404040);
 
-// Mesh
+// Capsule
 const gltfLoader = new GLTFLoader();
-gltfLoader.load('./assets/lowpolypatrick.glb', (gltf) => {
+gltfLoader.load("./assets/capsule.glb", (gltf) => {
+  const capsule = gltf.scene;
+  capsule.scale.set(1.75, 1.75, 1.75);
+  capsule.position.y = 0;
+  scene.add(capsule);
+
+  if (gltf.animations.length > 0) {
+    mixer = new THREE.AnimationMixer(capsule);
+    const action = mixer.clipAction(gltf.animations[0]);
+    action.setLoop(THREE.LoopOnce);
+    action.clampWhenFinished = true;
+    action.play();
+
+    mixer.addEventListener("finished", () => {
+    scene.remove(capsule);
+    isFinished = true;});
+    
+}});
+
+// Mesh Options
+const models = [
+  "./assets/bird.glb",
+  "./assets/CowboyCat.glb",
+  "./assets/Ganglios.glb",
+  "./assets/lowpolypatrick.glb"
+];
+
+
+// Mesh
+const selectedMesh = models[Math.floor(Math.random() * models.length)];
+
+gltfLoader.load(selectedMesh, (gltf) => {
   mesh = gltf.scene;
+
   mesh.traverse((child) => {
     if (child.isMesh) {
       child.geometry.center();
+      child.geometry.computeVertexNormals();
 
-      const hullGeo = child.geometry.clone();
-      hullGeo.scale(1.02, 1.02, 1.02);
-      const hullMath = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide });
-      const hullMesh = new THREE.Mesh(hullGeo, hullMath);
-      hullMesh.geometry.center();
-      
-      mesh.add(hullMesh);
+      // --- Outline Shader Material ---
+      const outlineMat = new THREE.ShaderMaterial({
+        uniforms: {
+          thickness: { value: 0.01 } // outline thickness
+        },
+        vertexShader: `
+          uniform float thickness;
+
+          void main() {
+            vec3 newPosition = position + normal * thickness;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+          }
+        `,
+        fragmentShader: `
+          void main() {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+          }
+        `,
+        side: THREE.BackSide
+      });
+
+      // --- Outline Mesh ---
+      const outlineMesh = new THREE.Mesh(child.geometry, outlineMat);
+
+      // Copy transforms so it matches the original mesh perfectly
+      outlineMesh.position.copy(child.position);
+      outlineMesh.rotation.copy(child.rotation);
+      outlineMesh.scale.copy(child.scale);
+
+      // Add outline beside the mesh (same parent)
+      child.parent.add(outlineMesh);
     }
-});
+  });
+
   mesh.scale.set(2, 2, 2);
   scene.add(mesh);
+
 });
-
-
-// Light
-const hemilight = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
-scene.add(hemilight);
 
 // Rotation variables
 let isDragging = false;
@@ -69,48 +133,64 @@ renderer.domElement.addEventListener("mousemove", (e) => {
 });
 
 // --- Touch Events ---
-renderer.domElement.addEventListener("touchstart", (e) => {
-  isDragging = true;
-  if (e.touches.length === 1) {
-    previousMousePosition.x = e.touches[0].clientX;
-    previousMousePosition.y = e.touches[0].clientY;
-  }
-});
+renderer.domElement.addEventListener(
+  "touchstart",
+  (e) => {
+    isDragging = true;
+    if (e.touches.length === 1) {
+      previousMousePosition.x = e.touches[0].clientX;
+      previousMousePosition.y = e.touches[0].clientY;
+    }
+  },
+  { passive: false }
+);
 
 renderer.domElement.addEventListener("touchend", () => {
   isDragging = false;
 });
 
-renderer.domElement.addEventListener("touchmove", (e) => {
-  if (!isDragging || e.touches.length !== 1) return;
+renderer.domElement.addEventListener(
+  "touchmove",
+  (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
 
-  const touch = e.touches[0];
-  const deltaMove = {
-    x: touch.clientX - previousMousePosition.x,
-    y: touch.clientY - previousMousePosition.y
-  };
+    const touch = e.touches[0];
+    const deltaMove = {
+      x: touch.clientX - previousMousePosition.x,
+      y: touch.clientY - previousMousePosition.y
+    };
 
-  rotationVelocity.y = deltaMove.x * 0.01;
-  rotationVelocity.x = deltaMove.y * 0.01;
+    rotationVelocity.y = deltaMove.x * 0.01;
+    rotationVelocity.x = deltaMove.y * 0.01;
 
-  previousMousePosition.x = touch.clientX;
-  previousMousePosition.y = touch.clientY;
+    previousMousePosition.x = touch.clientX;
+    previousMousePosition.y = touch.clientY;
 
-  e.preventDefault(); // Prevent scrolling while dragging
-}, { passive: false });
+    e.preventDefault();
+  },
+  { passive: false }
+);
 
 // Animate loop
 function animate() {
   requestAnimationFrame(animate);
 
-  if (mesh) {
+  const spinSpeed = Math.sqrt(
+    rotationVelocity.x * rotationVelocity.x +
+    rotationVelocity.y * rotationVelocity.y
+  );
+
+  if (mesh && isFinished) {
     mesh.rotation.x += rotationVelocity.x;
     mesh.rotation.y += rotationVelocity.y;
   }
 
-
   rotationVelocity.x *= dampingFactor;
   rotationVelocity.y *= dampingFactor;
+
+  if (mixer) {
+  mixer.update(clock.getDelta());
+  }
 
   renderer.render(scene, camera);
 }
