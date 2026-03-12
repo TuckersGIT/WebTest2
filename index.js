@@ -27,7 +27,7 @@ scene.background = new THREE.Color(0x404040);
 
 // Capsule
 const gltfLoader = new GLTFLoader();
-gltfLoader.load("./assets/capsule.glb", (gltf) => {
+gltfLoader.load("./assets/Capsule.glb", (gltf) => {
   const capsule = gltf.scene;
   capsule.scale.set(1.75, 1.75, 1.75);
   capsule.position.y = 0;
@@ -196,3 +196,4 @@ function animate() {
 }
 
 animate();
+
