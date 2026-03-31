@@ -54,7 +54,8 @@ const models = [
   "./assets/lowpolypatrick.glb",
   "./assets/Rora.glb",
   "./assets/Cow.glb",
-  "./assets/Clown.glb"
+  "./assets/Clown.glb",
+  "./assets/GoldenPatrick.glb"
 ];
 
 
