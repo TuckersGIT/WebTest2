@@ -25,6 +25,14 @@ camera.position.z = 3;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x404040);
 
+// Light
+const light = new THREE.DirectionalLight(0xf2d468, 10);
+light.position.set(5, 5, 0);
+light.target.position.set(1, 0, 0); // where the light points
+scene.add(light.target);
+scene.add(light);
+
+
 // Capsule
 const gltfLoader = new GLTFLoader();
 gltfLoader.load("./assets/Capsule.glb", (gltf) => {
@@ -68,7 +76,7 @@ gltfLoader.load(selectedMesh, (gltf) => {
   mesh.traverse((child) => {
     if (child.isMesh) {
       child.geometry.center();
-      child.geometry.computeVertexNormals();
+
 
       // --- Outline Shader Material ---
       const outlineMat = new THREE.ShaderMaterial({
