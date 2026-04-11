@@ -1,11 +1,17 @@
 import * as THREE from "three";
 import { GLTFLoader } from "jsm/loaders/GLTFLoader.js";
+// import { getParticleSystem } from "./getParticleSystem.js";
+
+import { EffectComposer } from "jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "jsm/postprocessing/UnrealBloomPass.js";
 
 // Global variables
 let mesh;
 let mixer;
 const clock = new THREE.Clock();
 let isFinished = false;
+let bloomEnabled = false;
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -32,6 +38,18 @@ light.target.position.set(1, 0, 0); // where the light points
 scene.add(light.target);
 scene.add(light);
 
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.25, // strength
+  0.3, // radius
+  0.95 // threshold
+);
+composer.addPass(bloomPass);
+
+
+
 
 // Capsule
 const gltfLoader = new GLTFLoader();
@@ -56,7 +74,7 @@ gltfLoader.load("./assets/Capsule.glb", (gltf) => {
 
 // Mesh Options
 const models = [
-  "./assets/bird.glb",
+  // "./assets/bird.glb",
   "./assets/CowboyCat.glb",
   "./assets/Ganglios.glb",
   "./assets/lowpolypatrick.glb",
@@ -69,6 +87,10 @@ const models = [
 
 // Mesh
 const selectedMesh = models[Math.floor(Math.random() * models.length)];
+if (selectedMesh === "./assets/GoldenPatrick.glb") {
+  bloomEnabled = true;
+}
+
 
 gltfLoader.load(selectedMesh, (gltf) => {
   mesh = gltf.scene;
@@ -186,6 +208,7 @@ renderer.domElement.addEventListener(
 // Animate loop
 function animate() {
   requestAnimationFrame(animate);
+  composer.render();
 
   const spinSpeed = Math.sqrt(
     rotationVelocity.x * rotationVelocity.x +
@@ -204,7 +227,13 @@ function animate() {
   mixer.update(clock.getDelta());
   }
 
-  renderer.render(scene, camera);
+  if (bloomEnabled) {
+    composer.render();
+  } 
+  else {
+    renderer.render(scene, camera);
+  }
+
 }
 
 animate();
